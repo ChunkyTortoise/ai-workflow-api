@@ -6,9 +6,13 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /health
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./workflow.db
+        value: sqlite+aiosqlite:///data/workflow.db
       - key: REDIS_URL
         fromService:
           type: keyvalue
@@ -25,9 +29,13 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python -m arq worker.worker.WorkerSettings
+    disk:
+      name: worker-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:///./workflow.db
+        value: sqlite+aiosqlite:///data/workflow.db
       - key: REDIS_URL
         fromService:
           type: keyvalue

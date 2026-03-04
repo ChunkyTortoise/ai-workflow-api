@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sse_starlette.sse import EventSourceResponse
 
 from app.events import subscribe_events
