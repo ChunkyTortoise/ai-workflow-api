@@ -1,0 +1,34 @@
+name: document_summary
+description: Fetch a document by URL, summarize with AI, and email the report
+trigger:
+  type: webhook
+  path: /triggers/document_summary
+steps:
+  - id: fetch_doc
+    type: http
+    method: GET
+    url: "{trigger.body.document_url}"
+    timeout: 30
+  - id: summarize
+    type: llm
+    model: claude-sonnet-4-6
+    prompt: |
+      Summarize the following document content. Provide:
+      1. A one-paragraph executive summary
+      2. Key findings (bullet points)
+      3. Action items (if any)
+
+      Document content:
+      {fetch_doc.body}
+    max_tokens: 2048
+  - id: send_report
+    type: notify
+    channel: email
+    recipient: "{trigger.body.email}"
+    subject: "Document Summary Report"
+    message: |
+      Here is your document summary:
+
+      {summarize.content}
+
+      Original document: {trigger.body.document_url}

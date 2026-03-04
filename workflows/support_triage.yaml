@@ -1,0 +1,46 @@
+name: support_triage
+description: Triage support tickets by sentiment and priority using AI
+trigger:
+  type: webhook
+  path: /triggers/support_triage
+steps:
+  - id: analyze
+    type: llm
+    model: claude-sonnet-4-6
+    prompt: |
+      Analyze this support ticket. Return a JSON object with:
+      - sentiment: "positive", "neutral", or "negative"
+      - priority: 1 (critical), 2 (high), 3 (medium), 4 (low)
+      - category: the issue category (billing, technical, account, general)
+      - summary: one-sentence summary
+      - suggested_response: a draft response to the customer
+
+      Ticket:
+      Subject: {trigger.body.subject}
+      From: {trigger.body.from}
+      Body: {trigger.body.message}
+  - id: check_urgent
+    type: condition
+    condition: "{analyze.priority} <= 2"
+    on_true: escalate
+    on_false: route_normal
+  - id: escalate
+    type: notify
+    channel: slack
+    recipient: "#support-urgent"
+    message: |
+      URGENT ticket ({analyze.category}):
+      {analyze.summary}
+      Sentiment: {analyze.sentiment}
+      Suggested response: {analyze.suggested_response}
+  - id: route_normal
+    type: notify
+    channel: email
+    recipient: "support-queue@company.com"
+    subject: "[{analyze.category}] {analyze.summary}"
+    message: |
+      New ticket routed to queue:
+      Priority: {analyze.priority}
+      Category: {analyze.category}
+      Summary: {analyze.summary}
+      Suggested response: {analyze.suggested_response}

@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: ai-workflow-api
+    plan: standard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./workflow.db
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: workflow-redis
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: INFO
+
+  - type: worker
+    name: ai-workflow-worker
+    plan: standard
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m arq worker.worker.WorkerSettings
+    envVars:
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./workflow.db
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: workflow-redis
+          property: connectionString
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+  - type: keyvalue
+    name: workflow-redis
+    plan: standard
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: allow all (internal only via Render private network)

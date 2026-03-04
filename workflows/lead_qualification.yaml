@@ -1,0 +1,30 @@
+name: lead_qualification
+description: Qualify inbound leads and route to CRM
+trigger:
+  type: webhook
+  path: /triggers/lead_qualification
+steps:
+  - id: qualify
+    type: llm
+    model: claude-sonnet-4-6
+    prompt: |
+      Analyze and qualify this lead based on their information.
+      Return a JSON object with fields: score (1-10), summary, company_size, budget_fit, urgency.
+
+      Lead data: {trigger.body}
+    output_key: qualification
+  - id: check_qualified
+    type: condition
+    condition: "{qualify.score} >= 7"
+    on_true: notify_sales
+    on_false: send_nurture
+  - id: notify_sales
+    type: notify
+    channel: slack
+    message: "New qualified lead (score: {qualify.score}): {qualify.summary}"
+    recipient: "#sales-leads"
+  - id: send_nurture
+    type: notify
+    channel: email
+    message: "Thanks for your interest. We'll be in touch soon with more information about how we can help."
+    subject: "Thanks for reaching out"
