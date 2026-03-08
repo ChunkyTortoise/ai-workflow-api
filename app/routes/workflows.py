@@ -6,6 +6,8 @@ from typing import Any
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
+
+from app.auth import require_api_key
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,6 +42,7 @@ class WorkflowDetail(WorkflowResponse):
 async def create_workflow(
     body: WorkflowCreate,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_api_key),
 ) -> Workflow:
     """Create a workflow from YAML definition."""
     try:
@@ -107,6 +110,7 @@ async def get_workflow(
 async def delete_workflow(
     workflow_id: str,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_api_key),
 ) -> None:
     """Delete a workflow."""
     result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))

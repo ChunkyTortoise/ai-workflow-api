@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from app.auth import require_api_key
 from pydantic import BaseModel
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -43,6 +45,7 @@ async def execute_workflow(
     workflow_id: str,
     body: TriggerBody,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_api_key),
 ) -> dict[str, Any]:
     """Execute a workflow and return the run result."""
     result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))
@@ -190,6 +193,7 @@ async def trigger_webhook(
     path: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
+    _: str = Depends(require_api_key),
 ) -> dict[str, Any]:
     """Trigger a workflow by its webhook path."""
     trigger_path = f"/triggers/{path}"

@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.models import init_db
+from app.routes.demo import router as demo_router
 from app.routes.runs import router as runs_router
 from app.routes.stream import router as stream_router
 from app.routes.workflows import router as workflows_router
@@ -85,6 +86,7 @@ def create_app() -> FastAPI:
     app.include_router(workflows_router, prefix="/api/v1")
     app.include_router(runs_router, prefix="/api/v1")
     app.include_router(stream_router, prefix="/api/v1")
+    app.include_router(demo_router)
 
     return app
 

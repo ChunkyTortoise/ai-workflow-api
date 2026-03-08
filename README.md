@@ -113,3 +113,211 @@ Deployed on Render with persistent disk for SQLite storage.
 # render.yaml includes disk configuration
 # Set ANTHROPIC_API_KEY + REDIS_URL in Render dashboard
 ```
+
+---
+
+## Environment Variables
+
+```bash
+# Required
+ANTHROPIC_API_KEY=sk-ant-...                        # Claude API key for LLM nodes
+REDIS_URL=redis://localhost:6379/0                   # ARQ worker queue + SSE pub/sub
+DATABASE_URL=sqlite+aiosqlite:///./workflow.db       # Async SQLAlchemy (SQLite default)
+
+# Optional
+CORS_ORIGINS=["http://localhost:3000"]               # JSON array of allowed origins
+LOG_LEVEL=INFO                                       # Python log level
+WORKER_MAX_JOBS=10                                   # Max concurrent ARQ jobs
+JOB_TIMEOUT_SECONDS=300                              # Per-job timeout
+```
+
+---
+
+## Project Structure
+
+```
+ai-workflow-api/
+├── app/
+│   ├── main.py                    # FastAPI app factory + lifespan
+│   ├── config.py                  # pydantic-settings (env-based)
+│   ├── models.py                  # SQLAlchemy async models (Workflow, WorkflowRun, WorkflowStep)
+│   ├── events.py                  # Redis pub/sub for SSE streaming
+│   ├── routes/
+│   │   ├── workflows.py           # CRUD: POST/GET/DELETE /api/v1/workflows
+│   │   ├── runs.py                # POST execute, GET list/detail, POST trigger
+│   │   └── stream.py              # GET /api/v1/runs/{id}/stream (SSE)
+│   └── services/
+│       ├── workflow_engine.py     # YAML parser + step executor + condition branching
+│       ├── node_registry.py       # Singleton registry for node types
+│       ├── claude_client.py       # Anthropic SDK wrapper
+│       ├── template.py            # Variable interpolation for YAML configs
+│       └── nodes/
+│           ├── trigger.py         # Entry point, passes input through
+│           ├── llm.py             # Claude API call with prompt template
+│           ├── condition.py       # Branch based on expression evaluation
+│           ├── http.py            # External HTTP request
+│           └── notify.py          # Email/Slack/webhook notification
+├── worker/                        # ARQ background worker settings
+├── workflows/                     # Built-in YAML workflow definitions
+│   ├── document_summary.yaml
+│   ├── lead_qualification.yaml
+│   └── support_triage.yaml
+├── tests/                         # 148 passing tests
+├── docker-compose.yml             # API + Redis + ARQ worker
+├── Dockerfile
+├── render.yaml                    # Render Blueprint deployment
+└── requirements.txt
+```
+
+---
+
+## API Examples
+
+All routes are prefixed with `/api/v1`.
+
+### Create a Workflow
+
+```bash
+curl -X POST http://localhost:8000/api/v1/workflows \
+  -H "Content-Type: application/json" \
+  -d '{"yaml_content": "name: my_workflow\ndescription: Test\ntrigger:\n  type: webhook\n  path: /triggers/my_workflow\nsteps:\n  - id: step1\n    type: trigger\n"}'
+```
+```json
+{
+  "id": "a1b2c3d4-...",
+  "name": "my_workflow",
+  "description": "Test",
+  "trigger_path": "/triggers/my_workflow",
+  "created_at": "2026-03-08T...",
+  "updated_at": "2026-03-08T..."
+}
+```
+
+### List Workflows
+
+```bash
+curl http://localhost:8000/api/v1/workflows
+```
+```json
+[
+  {
+    "id": "a1b2c3d4-...",
+    "name": "document_summary",
+    "description": "Fetch a document by URL, summarize with AI, and email the report",
+    "trigger_path": "/triggers/document_summary"
+  }
+]
+```
+
+### Execute a Workflow
+
+```bash
+curl -X POST http://localhost:8000/api/v1/runs/{workflow_id}/execute \
+  -H "Content-Type: application/json" \
+  -d '{"data": {"document_url": "https://example.com/doc.pdf", "email": "user@example.com"}}'
+```
+```json
+{
+  "id": "run_abc123",
+  "workflow_id": "a1b2c3d4-...",
+  "status": "completed",
+  "steps_completed": 3,
+  "total_steps": 3,
+  "error_message": null,
+  "started_at": "2026-03-08T...",
+  "completed_at": "2026-03-08T..."
+}
+```
+
+### Trigger via Webhook Path
+
+```bash
+curl -X POST http://localhost:8000/api/v1/runs/trigger/document_summary \
+  -H "Content-Type: application/json" \
+  -d '{"document_url": "https://example.com/report.pdf", "email": "user@co.com"}'
+```
+
+### Stream Progress (SSE)
+
+```bash
+curl -N http://localhost:8000/api/v1/runs/{run_id}/stream
+```
+```
+data: {"event": "step_started", "step_id": "fetch_doc", "node_type": "http"}
+data: {"event": "step_completed", "step_id": "fetch_doc", "status": "completed", "output": {...}}
+data: {"event": "step_started", "step_id": "summarize", "node_type": "llm"}
+data: {"event": "step_completed", "step_id": "summarize", "status": "completed", "output": {...}}
+data: {"event": "run_completed", "status": "completed", "steps_completed": 3, "total_steps": 3}
+```
+
+### List Runs (with filters)
+
+```bash
+curl "http://localhost:8000/api/v1/runs?workflow_id=abc&status=completed&page=1&page_size=20"
+```
+
+---
+
+## Built-in Workflows
+
+| Workflow | Steps | Description |
+|----------|-------|-------------|
+| `document_summary` | http -> llm -> notify | Fetches a document URL, summarizes with Claude, emails the report |
+| `lead_qualification` | llm -> condition -> notify | Qualifies leads with AI scoring, routes high-score to Slack, low-score to nurture email |
+| `support_triage` | llm -> condition -> notify | Analyzes ticket sentiment/priority, escalates urgent to Slack, routes normal to email queue |
+
+---
+
+## Node Types
+
+| Type | Description | Key Config Fields |
+|------|-------------|-------------------|
+| `trigger` | Entry point, passes webhook data through | `type`, `path` |
+| `llm` | Claude API call with prompt template | `model`, `prompt`, `max_tokens` |
+| `condition` | Branch based on expression evaluation | `condition`, `on_true`, `on_false` |
+| `http` | External HTTP request | `url`, `method`, `timeout` |
+| `notify` | Send notification (email/Slack/webhook) | `channel`, `recipient`, `message` |
+
+Step outputs are stored in context and available to downstream steps via `{step_id.field}` template syntax.
+
+---
+
+## Docker
+
+```bash
+# Start API + Redis + ARQ worker
+docker-compose up
+
+# API available at http://localhost:8000
+# Docs at http://localhost:8000/docs
+# ReDoc at http://localhost:8000/redoc
+```
+
+```yaml
+# docker-compose.yml services
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: sqlite+aiosqlite:///./workflow.db
+  worker:
+    build: .
+    command: python -m arq worker.worker.WorkerSettings
+    environment:
+      REDIS_URL: redis://redis:6379/0
+```
+
+---
+
+## Tests
+
+```bash
+pytest tests/ -v    # 148 passing tests
+```
+
+Tests use `fakeredis` for Redis and `respx` for HTTP mocking -- no external services required.
