@@ -271,7 +271,7 @@ ai-workflow-api/
 │           ├── llm.py             # Claude API call with prompt template
 │           ├── condition.py       # Branch based on expression evaluation
 │           ├── http.py            # External HTTP request
-│           └── notify.py         # Email/Slack/webhook notification
+│           └── notify.py          # Email/Slack/webhook notification
 ├── worker/                        # ARQ background worker settings
 ├── workflows/                     # Built-in YAML workflow definitions
 │   ├── document_summary.yaml
