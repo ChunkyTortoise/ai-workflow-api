@@ -2,11 +2,64 @@
 
 A YAML-driven workflow automation API with LLM orchestration, async job processing, and SSE progress streaming.
 
+[![Tests](https://github.com/ChunkyTortoise/ai-workflow-api/actions/workflows/ci.yml/badge.svg)](https://github.com/ChunkyTortoise/ai-workflow-api/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A575%25-brightgreen)](https://github.com/ChunkyTortoise/ai-workflow-api/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)
 ![ARQ](https://img.shields.io/badge/ARQ-async%20workers-orange)
 ![Claude AI](https://img.shields.io/badge/Claude-AI-orange?logo=anthropic)
-![Tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
+
+---
+
+## Try It Now
+
+No auth required for demo endpoints. Run locally with Docker or call the demo API directly.
+
+### Summarize a Document (SSE stream)
+
+```bash
+# Submit a summarization workflow
+curl -X POST http://localhost:8000/demo \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflow": "document_summary",
+    "input": {
+      "text": "Retrieval-Augmented Generation (RAG) combines a retrieval system with a generative model. The retrieval component fetches relevant documents from a corpus, and the generator conditions its output on both the query and retrieved context. This approach grounds LLM responses in factual, up-to-date information without expensive fine-tuning."
+    }
+  }'
+
+# Example response
+{
+  "job_id": "wf_a1b2c3d4",
+  "status": "queued",
+  "stream_url": "/jobs/wf_a1b2c3d4/stream"
+}
+```
+
+### Stream Real-time Output
+
+```bash
+# Stream SSE output as the workflow executes
+curl -N http://localhost:8000/jobs/wf_a1b2c3d4/stream
+
+# Example SSE stream
+data: {"node": "summarizer", "status": "running", "progress": 0.3}
+data: {"node": "summarizer", "status": "complete", "output": "RAG enhances LLM accuracy by combining retrieval with generation, grounding responses in factual context without fine-tuning."}
+data: {"node": "classifier", "status": "complete", "output": {"category": "AI/ML", "confidence": 0.94}}
+data: {"status": "workflow_complete", "total_nodes": 2, "elapsed_ms": 1847}
+```
+
+### Classify Text
+
+```bash
+curl -X POST http://localhost:8000/demo \
+  -H "Content-Type: application/json" \
+  -d '{
+    "workflow": "text_classify",
+    "input": {"text": "Our Q3 revenue grew 23% driven by enterprise contract expansions."}
+  }'
+```
 
 ---
 
@@ -22,15 +75,100 @@ A YAML-driven workflow automation API with LLM orchestration, async job processi
 
 ## Architecture
 
+```mermaid
+graph TB
+    Client["Client<br/>(HTTP / curl)"]
+
+    subgraph API["FastAPI Layer"]
+        EP[POST /workflows/run<br/>POST /demo]
+        JS[Job Status<br/>GET /jobs/{id}]
+    end
+
+    subgraph Queue["ARQ Worker Queue (Redis)"]
+        WQ[Job Queue]
+        WK[ARQ Worker]
+    end
+
+    subgraph Engine["Workflow Engine"]
+        YP[YAML Parser]
+        NE[Node Executor]
+        NE --> LLM[LLM Node<br/>Claude]
+        NE --> HTTP[HTTP Node<br/>External APIs]
+        NE --> COND[Condition Node<br/>if/else branching]
+        NE --> NOTIF[Notify Node<br/>Webhooks]
+    end
+
+    subgraph State["Job State"]
+        SQ[SQLite<br/>job_results]
+    end
+
+    subgraph Stream["Real-time Output"]
+        SSE[SSE Stream<br/>GET /jobs/{id}/stream]
+    end
+
+    Client --> EP
+    EP --> WQ
+    WQ --> WK
+    WK --> YP
+    YP --> Engine
+    Engine --> State
+    Engine --> SSE
+    Client --> SSE
+    Client --> JS
+    JS --> State
+
+    style Client fill:#4A90D9,color:#fff
+    style Engine fill:#7B68EE,color:#fff
+    style SSE fill:#50C878,color:#fff
+    style LLM fill:#FF8C42,color:#fff
 ```
-Client -> FastAPI -> ARQ Worker Queue (Redis)
-                         |
-               Workflow Engine (YAML)
-                         |
-            Node executors: LLM | HTTP | Condition | Notify
-                         |
-               SQLite (job state) + SSE (progress stream)
+
+---
+
+## YAML-Driven Workflows
+
+Workflows are plain YAML — no code, no SDK, just declarative nodes.
+
+**`workflows/document_summary.yaml`**
+
+```yaml
+name: document_summary
+description: Fetch a document by URL, summarize with AI, and email the report
+trigger:
+  type: webhook
+  path: /triggers/document_summary
+steps:
+  - id: fetch_doc
+    type: http
+    method: GET
+    url: "{trigger.body.document_url}"
+    timeout: 30
+  - id: summarize
+    type: llm
+    model: claude-sonnet-4-6
+    prompt: |
+      Summarize the following document content. Provide:
+      1. A one-paragraph executive summary
+      2. Key findings (bullet points)
+      3. Action items (if any)
+
+      Document content:
+      {fetch_doc.body}
+    max_tokens: 2048
+  - id: send_report
+    type: notify
+    channel: email
+    recipient: "{trigger.body.email}"
+    subject: "Document Summary Report"
+    message: |
+      Here is your document summary:
+
+      {summarize.content}
+
+      Original document: {trigger.body.document_url}
 ```
+
+> **Key concepts**: Template variables (`{}`), node chaining, model selection per step, multi-channel notify. Add any `.yaml` to `workflows/` and it's instantly available via the API — no code changes.
 
 ---
 
@@ -41,7 +179,7 @@ Client -> FastAPI -> ARQ Worker Queue (Redis)
 - **Database**: SQLite + SQLAlchemy async (persistent via Render disk)
 - **AI**: Anthropic Claude (`anthropic` SDK)
 - **Config**: YAML workflow definitions
-- **Tests**: Pytest + fakeredis + respx (148 passing)
+- **Tests**: Pytest + fakeredis + respx (145 passing)
 
 ---
 
@@ -64,29 +202,6 @@ DATABASE_URL=sqlite+aiosqlite:///./workflow.db
 uvicorn app.main:app --reload   # Start API
 arq app.worker.WorkerSettings   # Start ARQ worker
 pytest tests/ -v                # Run tests
-```
-
----
-
-## Workflow YAML Format
-
-```yaml
-name: document_processor
-nodes:
-  - id: trigger
-    type: trigger
-    config:
-      event: document_uploaded
-  - id: extract
-    type: llm
-    config:
-      prompt: "Extract key fields from: {document_content}"
-      model: claude-haiku-4-5-20251001
-  - id: notify
-    type: notify
-    config:
-      channel: webhook
-      url: "{NOTIFY_URL}"
 ```
 
 ---
@@ -156,13 +271,13 @@ ai-workflow-api/
 │           ├── llm.py             # Claude API call with prompt template
 │           ├── condition.py       # Branch based on expression evaluation
 │           ├── http.py            # External HTTP request
-│           └── notify.py          # Email/Slack/webhook notification
+│           └── notify.py         # Email/Slack/webhook notification
 ├── worker/                        # ARQ background worker settings
 ├── workflows/                     # Built-in YAML workflow definitions
 │   ├── document_summary.yaml
 │   ├── lead_qualification.yaml
 │   └── support_triage.yaml
-├── tests/                         # 148 passing tests
+├── tests/                         # 145 passing tests
 ├── docker-compose.yml             # API + Redis + ARQ worker
 ├── Dockerfile
 ├── render.yaml                    # Render Blueprint deployment
@@ -317,7 +432,27 @@ services:
 ## Tests
 
 ```bash
-pytest tests/ -v    # 148 passing tests
+pytest tests/ -v    # 145 passing tests
 ```
 
 Tests use `fakeredis` for Redis and `respx` for HTTP mocking -- no external services required.
+
+---
+
+## Certifications Applied
+
+Domain pillars from [19 completed AI/ML certifications](https://caymanroden.com) backing this project:
+
+| Domain | Certification | Applied In |
+|--------|--------------|-----------|
+| LLM Orchestration | Anthropic Building with Claude (Vanderbilt) | Multi-node LLM workflows, model selection per node |
+| Async Systems & Queues | IBM DevOps and Software Engineering | ARQ worker queue, Redis job state, async job processing |
+| API Design | Meta Back-End Developer (Python) | FastAPI routes, SSE streaming, OpenAPI docs |
+| Workflow Engines | IBM Full Stack Developer | YAML DSL design, node executor pattern, condition branching |
+| AI Pipelines | DeepLearning.AI MLOps Specialization | YAML-driven pipeline architecture, declarative AI workflows |
+
+---
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Cayman Roden

@@ -12,6 +12,6 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install -r requirements.txt
-      - run: python -m pytest tests/ -v
+      - run: python -m pytest tests/ -v --cov=app --cov-report=term-missing --cov-fail-under=75
       - run: ruff check app/
       - run: mypy app/ --ignore-missing-imports
