@@ -6,6 +6,7 @@ from typing import Any
 
 import yaml
 from fastapi import APIRouter, Depends, HTTPException
+from starlette.responses import Response
 
 from app.auth import require_api_key
 from pydantic import BaseModel
@@ -111,7 +112,7 @@ async def delete_workflow(
     workflow_id: str,
     db: AsyncSession = Depends(get_db),
     _: str = Depends(require_api_key),
-) -> None:
+) -> Response:
     """Delete a workflow."""
     result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))
     workflow = result.scalar_one_or_none()
@@ -120,3 +121,4 @@ async def delete_workflow(
 
     await db.delete(workflow)
     await db.commit()
+    return Response(status_code=204)
