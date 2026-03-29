@@ -3,12 +3,12 @@
 A YAML-driven workflow automation API with LLM orchestration, async job processing, and SSE progress streaming.
 
 [![Tests](https://github.com/ChunkyTortoise/ai-workflow-api/actions/workflows/ci.yml/badge.svg)](https://github.com/ChunkyTortoise/ai-workflow-api/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A575%25-brightgreen)](https://github.com/ChunkyTortoise/ai-workflow-api/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A575%25-64748B)](https://github.com/ChunkyTortoise/ai-workflow-api/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-64748B.svg)](LICENSE)
+![Python](https://img.shields.io/badge/Python-3.12-64748B?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green?logo=fastapi)
-![ARQ](https://img.shields.io/badge/ARQ-async%20workers-orange)
-![Claude AI](https://img.shields.io/badge/Claude-AI-orange?logo=anthropic)
+![ARQ](https://img.shields.io/badge/ARQ-async%20workers-64748B)
+![Claude AI](https://img.shields.io/badge/Claude-AI-0EA5E9?logo=anthropic)
 
 ---
 
@@ -76,6 +76,7 @@ curl -X POST http://localhost:8000/demo \
 ## Architecture
 
 ```mermaid
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#0EA5E9', 'primaryBorderColor': '#0284C7', 'primaryTextColor': '#E2E8F0', 'lineColor': '#64748B'}}}%%
 graph TB
     Client["Client<br/>(HTTP / curl)"]
 
