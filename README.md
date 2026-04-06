@@ -409,6 +409,14 @@ docker-compose up
 # ReDoc at http://localhost:8000/redoc
 ```
 
+### Streamlit UI
+
+```bash
+pip install -r requirements-ui.txt
+streamlit run ui/app.py
+# UI available at http://localhost:8501
+```
+
 ```yaml
 # docker-compose.yml services
 services:
