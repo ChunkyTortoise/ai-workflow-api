@@ -173,6 +173,17 @@ steps:
 
 ---
 
+## For Hiring Managers
+
+| If you're evaluating for... | Where to look | What it demonstrates |
+|-----------------------------|--------------|---------------------|
+| **Backend / API Design** | FastAPI app ([`app/main.py`](app/main.py)), SSE streaming, YAML-driven node execution | Production async API with Server-Sent Events and declarative workflow config |
+| **LLM Orchestration** | LLM node type ([`app/nodes/`](app/nodes/)), prompt templating, model selection per step | Multi-step AI pipelines with configurable models and chained outputs |
+| **Async / Queue Systems** | ARQ worker ([`app/worker.py`](app/worker.py)), job lifecycle, Redis-backed queue | Async job processing with progress tracking and graceful failure handling |
+| **DevOps / Extensibility** | YAML workflow definitions ([`workflows/`](workflows/)), Render blueprint, Docker setup | Zero-code workflow creation, drop a YAML file and it's live |
+
+---
+
 ## Tech Stack
 
 - **API**: FastAPI + Uvicorn
@@ -180,7 +191,7 @@ steps:
 - **Database**: SQLite + SQLAlchemy async (persistent via Render disk)
 - **AI**: Anthropic Claude (`anthropic` SDK)
 - **Config**: YAML workflow definitions
-- **Tests**: Pytest + fakeredis + respx (145 passing)
+- **Tests**: Pytest + fakeredis + respx (148 passing)
 
 ---
 
