@@ -12,6 +12,14 @@ A YAML-driven workflow automation API with LLM orchestration, async job processi
 
 ---
 
+> **Proof in 30 seconds** -- 148 tests | 5 node types | 3 built-in workflows | FastAPI + async ARQ + SSE streaming | YAML-driven
+>
+> **Best fit** -- Applied AI Engineer, AI Backend Engineer, AI Engineer
+>
+> **Why it matters** -- End-to-end event-driven pipeline: YAML workflow definitions → async ARQ job queue → SSE progress streaming → LLM execution. Drop a YAML file and have a new workflow running in minutes.
+
+---
+
 ## Try It Now
 
 No auth required for demo endpoints. Run locally with Docker or call the demo API directly.
@@ -232,13 +240,11 @@ pytest tests/ -v                # Run tests
 
 ## Deployment
 
-Deployed on Render with persistent disk for SQLite storage.
-
-> **Note**: SQLite data is stored on a Render persistent disk (`/data/workflow.db`). Data persists across deploys but not across disk replacements.
+Render-ready via `render.yaml` Blueprint (2 services: API + ARQ worker). Persistent SQLite on Render disk (`/data/workflow.db`) — data survives redeploys.
 
 ```bash
-# render.yaml includes disk configuration
-# Set ANTHROPIC_API_KEY + REDIS_URL in Render dashboard
+# Set ANTHROPIC_API_KEY + REDIS_URL in Render dashboard, then:
+# render blueprint apply render.yaml
 ```
 
 ---
@@ -289,7 +295,7 @@ ai-workflow-api/
 │   ├── document_summary.yaml
 │   ├── lead_qualification.yaml
 │   └── support_triage.yaml
-├── tests/                         # 145 passing tests
+├── tests/                         # 148 passing tests
 ├── docker-compose.yml             # API + Redis + ARQ worker
 ├── Dockerfile
 ├── render.yaml                    # Render Blueprint deployment
@@ -452,7 +458,7 @@ services:
 ## Tests
 
 ```bash
-pytest tests/ -v    # 145 passing tests
+pytest tests/ -v    # 148 passing tests
 ```
 
 Tests use `fakeredis` for Redis and `respx` for HTTP mocking -- no external services required.
