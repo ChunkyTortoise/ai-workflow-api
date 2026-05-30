@@ -31,7 +31,7 @@ trigger:
 steps:
   - id: score_lead
     type: llm
-    model: claude-3-5-haiku-20241022
+    model: claude-haiku-4-5-20251001
     prompt: |
       Score this lead on a scale 1-10 based on company size, role, and stated need.
       Return JSON: {"score": <int>, "tier": "hot|warm|cold", "reason": "<string>"}

@@ -9,3 +9,17 @@ dist/
 build/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Local editor/agent artifacts
+.cursor/
+.cursorignore
+.maintenance/
+AGENTS.md.bak-*
+claude-progress.txt
+
+# Ephemeral session notes (gitignored so Claude can write freely)
+NOTES.md
