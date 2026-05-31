@@ -12,6 +12,16 @@ A YAML-driven workflow automation API with LLM orchestration, async job processi
 
 ---
 
+## For Hiring Managers
+
+**30-second pitch:** AI Workflow API is a YAML-driven FastAPI backend for running multi-step LLM workflows with async workers and real-time progress streaming. It shows how I turn AI workflows into typed, observable APIs rather than one-off scripts.
+
+**Key proof:** 148 tests, 5 node types, 3 built-in workflows, Redis-backed ARQ workers, SSE status streaming, structured workflow definitions, and CI-backed API behavior.
+
+**Engineering signals:** FastAPI, async Python, Redis/ARQ queues, Server-Sent Events, YAML parsing, workflow state, node executors, typed request/response contracts, and LLM orchestration.
+
+**Hiring fit:** Applied AI Engineer, AI Backend Engineer, Python Developer, Workflow Automation Engineer.
+
 > **Proof in 30 seconds** -- 148 tests | 5 node types | 3 built-in workflows | FastAPI + async ARQ + SSE streaming | YAML-driven
 >
 > **Best fit** -- Applied AI Engineer, AI Backend Engineer, AI Engineer
