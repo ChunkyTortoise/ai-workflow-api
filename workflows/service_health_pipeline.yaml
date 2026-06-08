@@ -1,0 +1,30 @@
+name: service_health_pipeline
+description: >-
+  Webhook-triggered orchestration with no LLM dependency. Fetches an upstream service, branches on its HTTP status, notifies the right channel, and finalizes. Used to demonstrate SSE progress streaming over a multi-step run.
+trigger:
+  type: webhook
+  path: /triggers/service_health_pipeline
+steps:
+  - id: receive_event
+    type: trigger
+  - id: fetch_health
+    type: http
+    method: GET
+    url: http://localhost:8000/health
+  - id: route_on_status
+    type: condition
+    condition: "{fetch_health.status_code} == 200"
+    on_true: notify_healthy
+    on_false: notify_degraded
+  - id: notify_healthy
+    type: notify
+    channel: log
+    message: "Upstream healthy (status {fetch_health.status_code}); proceeding."
+  - id: notify_degraded
+    type: notify
+    channel: log
+    message: "Upstream degraded; alerting on-call."
+  - id: finalize_run
+    type: notify
+    channel: log
+    message: "Pipeline complete."
