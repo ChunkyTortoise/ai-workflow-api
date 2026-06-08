@@ -40,6 +40,11 @@ class TriggerBody(BaseModel):
     data: dict[str, Any] = {}
 
 
+def get_arq_pool(request: Request):
+    """Return the ARQ pool from app state. Overridable in tests."""
+    return request.app.state.arq_pool
+
+
 @router.post("/{workflow_id}/execute", response_model=RunResponse, status_code=201)
 async def execute_workflow(
     workflow_id: str,
@@ -97,6 +102,55 @@ async def execute_workflow(
         run.error_message = f"Step '{failed_steps[0].step_id}' failed: {failed_steps[0].error}"
     await db.commit()
     await db.refresh(run)
+
+    return {
+        "id": run.id,
+        "workflow_id": run.workflow_id,
+        "status": run.status,
+        "steps_completed": run.steps_completed,
+        "total_steps": run.total_steps,
+        "error_message": run.error_message,
+        "started_at": run.started_at.isoformat() if run.started_at else None,
+        "completed_at": run.completed_at.isoformat() if run.completed_at else None,
+        "created_at": run.created_at.isoformat(),
+    }
+
+
+@router.post("/{workflow_id}/execute-async", response_model=RunResponse, status_code=202)
+async def execute_workflow_async(
+    workflow_id: str,
+    body: TriggerBody,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    pool=Depends(get_arq_pool),
+    _: str = Depends(require_api_key),
+) -> dict[str, Any]:
+    """Enqueue a workflow for asynchronous execution by the ARQ worker.
+
+    Returns immediately with the run id. The worker publishes progress to
+    Redis as it executes; subscribe via GET /api/v1/runs/{run_id}/stream.
+    """
+    result = await db.execute(select(Workflow).where(Workflow.id == workflow_id))
+    workflow = result.scalar_one_or_none()
+    if not workflow:
+        raise HTTPException(404, "Workflow not found")
+
+    definition = WorkflowDefinition(workflow.yaml_content)
+
+    run = WorkflowRun(
+        workflow_id=workflow_id,
+        status="queued",
+        trigger_data=body.data,
+        total_steps=len(definition.steps),
+    )
+    db.add(run)
+    await db.commit()
+    await db.refresh(run)
+
+    trigger_data = {"body": body.data, "headers": {}}
+    await pool.enqueue_job(
+        "execute_workflow_job", run.id, workflow.yaml_content, trigger_data
+    )
 
     return {
         "id": run.id,

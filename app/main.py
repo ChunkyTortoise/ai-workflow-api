@@ -5,6 +5,8 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 
+from arq import create_pool
+from arq.connections import RedisSettings
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,8 +32,10 @@ async def lifespan(app: FastAPI):
     """Application lifespan: startup and shutdown."""
     logger.info("AI Workflow API starting up...")
     await init_db()
+    app.state.arq_pool = await create_pool(RedisSettings.from_dsn(settings.redis_url))
     yield
     logger.info("AI Workflow API shutting down...")
+    await app.state.arq_pool.close()
     from app.models import engine
 
     await engine.dispose()
