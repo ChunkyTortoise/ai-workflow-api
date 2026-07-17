@@ -1,4 +1,4 @@
-"""Notification node (email/Slack/GHL stubs)."""
+"""Notification node (email/Slack/webhook stubs)."""
 from __future__ import annotations
 
 import logging
@@ -14,13 +14,13 @@ class NotifyNode:
 
     node_type = "notify"
 
-    SUPPORTED_CHANNELS = {"email", "slack", "ghl", "webhook", "log"}
+    SUPPORTED_CHANNELS = {"email", "slack", "webhook", "log"}
 
     async def execute(self, config: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
         """Execute a notification.
 
         Config keys:
-            channel: "email" | "slack" | "ghl" | "webhook" | "log"
+            channel: "email" | "slack" | "webhook" | "log"
             message: message template with placeholders
             recipient: optional recipient (email address, Slack channel, etc.)
             subject: optional subject (for email)

@@ -416,15 +416,6 @@ class TestNotifyNode:
         assert result["message"] == "Score: 9"
 
     @pytest.mark.asyncio
-    async def test_notify_ghl_channel(self):
-        node = NotifyNode()
-        result = await node.execute(
-            {"channel": "ghl", "message": "GHL notification"},
-            {},
-        )
-        assert result["sent"] is True
-        assert result["channel"] == "ghl"
-
     @pytest.mark.asyncio
     async def test_notify_webhook_channel(self):
         node = NotifyNode()
