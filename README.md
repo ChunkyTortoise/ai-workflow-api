@@ -16,6 +16,10 @@ they happen.
 *A real run of the no-LLM `service_health_pipeline`: `execute-async` queues the
 job, the worker streams step progress over SSE, the run completes in 6/6 steps.*
 
+There is no public hosted demo. The Quickstart below is the review path
+(and how the GIF was captured). Optional local UI: `streamlit run ui/app.py`.
+Interactive docs: `http://localhost:8000/docs` after uvicorn is up.
+
 ## Quickstart
 
 Run it locally (this is the path used to capture the GIF above):
@@ -97,12 +101,12 @@ All numbers come from real local runs on this branch.
 
 | Metric | Value | Source |
 |--------|-------|--------|
-| Tests | 152 passing | `pytest tests/ -v` |
+| Tests | 151 passing | `pytest tests/ -v` |
 | Coverage | 79.5% | `pytest --cov=app` (CI fails under 75%) |
-| Run latency | median 39 ms (n=12, range 19-55 ms) | `service_health_pipeline` (6 steps, no LLM); `WorkflowRun` start/complete timestamps |
+| Demo wall-clock | ~0.3s end-to-end in the GIF | no-LLM `service_health_pipeline` (6 steps); local Redis + worker |
 
-Latency is for the no-LLM demo pipeline and is not representative of
-LLM-bearing workflows, whose time is dominated by the model call.
+Wall-clock is for the no-LLM demo pipeline only. LLM steps are dominated by
+the model call. There is no committed latency bench script yet.
 
 ## SSE event shape
 
@@ -183,11 +187,12 @@ All workflow routes are under `/api/v1`.
 | `GET` | `/api/v1/runs/{run_id}` | Run detail with per-step results |
 | `GET` | `/api/v1/runs` | List runs, filter by `workflow_id` / `status` |
 | `GET` | `/api/v1/runs/{run_id}/stream` | SSE progress stream (replays + tails) |
+| `POST` | `/demo` | Mock demo payload for local UI smoke (not a live LLM run) |
 
 ## Tests
 
 ```bash
-pytest tests/ -v    # 152 tests, fakeredis + respx, no live services required
+pytest tests/ -v    # 151 tests, fakeredis + respx, no live services required
 ```
 
 Config comes from a `.env` file (`cp .env.example .env`): `ANTHROPIC_API_KEY`
@@ -219,7 +224,7 @@ app/
 worker/worker.py          ARQ worker: execute_workflow_job (publishes progress)
 workflows/                built-in YAML workflows
 scripts/stream_demo.py    SSE demo used for the GIF
-tests/                    152 tests
+tests/                    151 tests
 ```
 
 ## License
